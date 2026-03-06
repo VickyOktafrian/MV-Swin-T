@@ -379,9 +379,10 @@ class MVSwinTransformer(nn.Module):
 
         self.norm = norm_layer(self.num_features)
         self.avgpool = nn.AdaptiveAvgPool1d(1)
-        self.head = nn.Linear(
-            self.num_features, num_classes) if num_classes > 0 else nn.Identity()
-        self.act = nn.Sigmoid()
+
+        # Multi-task heads
+        self.head_birads  = nn.Linear(self.num_features, 5)  # BI-RADS: 5 kelas
+        self.head_density = nn.Linear(self.num_features, 4)  # Density: 4 kelas
 
         self.apply(self._init_weights)
         for bly in self.layers:
@@ -433,5 +434,6 @@ class MVSwinTransformer(nn.Module):
 
     def forward(self, x1, x2):
         x = self.forward_features(x1, x2)
-        x = self.head(x)
-        return self.act(x)
+        out_birads  = self.head_birads(x)   # (B, 5)
+        out_density = self.head_density(x)  # (B, 4)
+        return out_birads, out_density
