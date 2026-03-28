@@ -67,11 +67,11 @@ class DynamicAttention_multiview(nn.Module):
             relative_coords_table_1[:, :, :, 0] /= (self.window_size[0] - 1)
             relative_coords_table_1[:, :, :, 1] /= (self.window_size[1] - 1)
         relative_coords_table_1 *= 8  # normalize to -8, 8
-        self.relative_coords_table_1 = (torch.sign(relative_coords_table_1) * torch.log2(
-            torch.abs(relative_coords_table_1) + 1.0) / np.log2(8)).cuda()
+        relative_coords_table_1 = (torch.sign(relative_coords_table_1) * torch.log2(
+            torch.abs(relative_coords_table_1) + 1.0) / np.log2(8))
 
-        self.register_buffer("relative_coords_table",
-                             self.relative_coords_table_1)
+        self.register_buffer("relative_coords_table_1", relative_coords_table_1)
+        self.register_buffer("relative_coords_table",  relative_coords_table_1)
 
         # get pair-wise relative position index for each token inside the window
         coords_h_1 = torch.arange(self.window_size[0])
@@ -131,11 +131,11 @@ class DynamicAttention_multiview(nn.Module):
             relative_coords_table_2[:, :, :, 0] /= (self.window_size[0] - 1)
             relative_coords_table_2[:, :, :, 1] /= (self.window_size[1] - 1)
         relative_coords_table_2 *= 8  # normalize to -8, 8
-        self.relative_coords_table_2 = (torch.sign(relative_coords_table_2) * torch.log2(
-            torch.abs(relative_coords_table_2) + 1.0) / np.log2(8)).cuda()
+        relative_coords_table_2 = (torch.sign(relative_coords_table_2) * torch.log2(
+            torch.abs(relative_coords_table_2) + 1.0) / np.log2(8))
 
-        self.register_buffer("relative_coords_table",
-                             self.relative_coords_table_2)
+        self.register_buffer("relative_coords_table_2", relative_coords_table_2)
+        self.register_buffer("relative_coords_table",   relative_coords_table_2)
 
         # get pair-wise relative position index for each token inside the window
         coords_h_2 = torch.arange(self.window_size[0])
@@ -207,7 +207,7 @@ class DynamicAttention_multiview(nn.Module):
             attn_diff_x1 = (F.normalize(q_x1, dim=-1) @
                             F.normalize(k_x2, dim=-1).transpose(-2, -1))
             logit_scale_1 = torch.clamp(self.logit_scale_1, max=torch.log(
-                torch.tensor(1. / 0.01).cuda())).exp()
+                torch.tensor(1. / 0.01, device=self.logit_scale_1.device))).exp()
             # print("before concat: ", attn_same_x1.shape, attn_diff_x1.shape)
             concat_attn_x1 = torch.concat(
                 (attn_same_x1, attn_diff_x1), dim=1).permute(0, 2, 3, 1)
@@ -226,7 +226,7 @@ class DynamicAttention_multiview(nn.Module):
             attn_diff_x2 = (F.normalize(q_x2, dim=-1) @
                             F.normalize(k_x1, dim=-1).transpose(-2, -1))
             logit_scale_2 = torch.clamp(self.logit_scale_2, max=torch.log(
-                torch.tensor(1. / 0.01).cuda())).exp()
+                torch.tensor(1. / 0.01, device=self.logit_scale_1.device))).exp()
             ## For weighted average:
             # attn_x2 = (0.9 * attn_same_x2 + 0.1 * attn_diff_x2) * logit_scale_2
 
@@ -240,14 +240,14 @@ class DynamicAttention_multiview(nn.Module):
             attn_same_x1 = (F.normalize(q_x1, dim=-1) @
                             F.normalize(k_x1, dim=-1).transpose(-2, -1))
             logit_scale_1 = torch.clamp(self.logit_scale_1, max=torch.log(
-                torch.tensor(1. / 0.01).cuda())).exp()
+                torch.tensor(1. / 0.01, device=self.logit_scale_1.device))).exp()
             attn_x1 = attn_same_x1 * logit_scale_1
 
             # cosine attention- second view
             attn_same_x2 = (F.normalize(q_x2, dim=-1) @
                             F.normalize(k_x2, dim=-1).transpose(-2, -1))
             logit_scale_2 = torch.clamp(self.logit_scale_2, max=torch.log(
-                torch.tensor(1. / 0.01).cuda())).exp()
+                torch.tensor(1. / 0.01, device=self.logit_scale_1.device))).exp()
             attn_x2 = attn_same_x2 * logit_scale_2
 
         relative_position_bias_table_1 = self.cpb_mlp_1(
